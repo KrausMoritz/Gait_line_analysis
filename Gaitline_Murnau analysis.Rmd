@@ -1,0 +1,623 @@
+---
+title: "Gaitline_Murnau"
+output: html_notebook
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: true
+    toc_collapsed: true
+    code_folding: hide
+theme: lumen
+editor_options:
+  chunk_output_type: inline
+  fig_crop: false
+---
+##Load packages
+```{r, results ='hide'}
+#install.packages("fdapace")
+library(ggplot2) 
+library(dplyr)
+library(RColorBrewer)
+library(ggpubr)
+library(rstatix)
+library(Matrix)
+library(gridExtra)
+library(plyr)
+library(reshape2)
+library(ggridges)
+library(ggsignif)
+#install.packages('MFPCA')
+library(fda)
+library(fdapace)
+library(reshape)
+#library(tidyverse)
+library(readxl)
+library(data.table)
+library(factoextra)
+library(ggpubr)
+library(purrr)
+library(tidyr)
+library(RColorBrewer)
+```
+
+##Load Data
+```{r}
+#gaitline.total<- read.table('/Users/moritzkraus/Documents/Projekte_Research/Projects/Gait_line_Murnau/Daten_CoP_location_V2.csv',header = TRUE, sep = ";", dec = ",", stringsAsFactors = FALSE)
+gaitline.total<- read.table('/Users/moritzkraus/Documents/Projekte_Research/Projects/Gait_line_Murnau/Gaitline_Velocity_melted.csv',header = TRUE, sep = ";", dec = ",", stringsAsFactors = FALSE)
+
+velocity.total<- read.table('/Users/moritzkraus/Documents/Projekte_Research/Projects/Gait_line_Murnau/Daten_CoP_AOFAS_velocity.csv',header = TRUE, sep = ";", dec = ",", stringsAsFactors = FALSE)
+
+aofas_scores <- read.table('/Users/moritzkraus/Documents/Projekte_Research/Projects/Gait_line_Murnau/AOFAS_Scores2.csv',header = TRUE, sep = ";", dec = ",", stringsAsFactors = FALSE)
+```
+
+#Rearrange not possible!!
+```{r}
+gait.new <- melt(gaitline.total,id.vars = c("P009_BJ", "X","X.1", "X.2" ))
+
+rearranged.data <- for (x in 1:10) {
+  gaitline.add <- gaitline.total[,x:(x+3)]
+}
+      
+gaitline.add <- df[,1:4]              
+              
+for(i in 1:(ncol(gaitline.total)/4)) {       # for-loop over rows
+  gaitline.add <- rbind(gaitline.add, gaitline.total[,i:(i+4)])
+}
+```
+#FPCA
+```{r}
+library(fdapace)
+library(MFPCA)
+#medfly25
+
+#gaitline.total <- gaitline.total %>% mutate(
+#Side = c(L,L,L,R,L,R,R,L,L,L,R,L,L,R,L,R,R,L)
+
+#gaitline.total <- gaitline.total[c(1:3500),]# %>% remove(id == "P499_BR") #,"P494_RA","P477_GT","P469_HJ"))
+#gaitline.total <- gaitline.total %>% filter(time %in% c(25:75))
+gaitline.total <- gaitline.total %>% mutate(Side = ifelse(id =="P038_BA","R",
+                                                          ifelse(id =="P053_KD","R",
+                                                          ifelse(id =="P068_DP","R",
+                                                          ifelse(id =="P114_NU","R",
+                                                          ifelse(id =="P129_VJ","R",
+                                                          ifelse(id =="P138_SG","R",
+                                                          ifelse(id =="P149_KB","R",
+                                                          ifelse(id =="P218_GC","R",
+                                                          ifelse(id =="P220_LR","R",
+                                                          ifelse(id =="P282_RF","R",
+                                                          ifelse(id =="P353_ST","R",
+                                                          ifelse(id =="P477_GT","R",
+                                                          ifelse(id =="P476_LU","R",
+                                                          ifelse(id =="P357_KK","R"
+                                                          ,"L")))))))))))))))
+
+gaitline.total <- gaitline.total  %>% rowwise() %>%  mutate(new3Mo = ifelse(id =="P038_BA",-X3Mo+2*(2.951074),
+                                                                          ifelse(id =="P053_KD",-X3Mo+2*(4.725813),
+                                                                          ifelse(id =="P068_DP",-X3Mo+2*(4.407160	),
+                                                                          ifelse(id =="P114_NU",-X3Mo+2*(3.065407),
+                                                                          ifelse(id =="P129_VJ",-X3Mo+2*(5.116049),
+                                                                          ifelse(id =="P138_SG",-X3Mo+2*(3.546296),
+                                                                          ifelse(id =="P149_KB",-X3Mo+2*(3.036420),
+                                                                          ifelse(id =="P220_LR",-X3Mo+2*(3.2517361),
+                                                                          ifelse(id =="P282_RF",-X3Mo+2*(2.98216),
+                                                                          ifelse(id =="P353_ST",-X3Mo+2*(3.1079859),
+                                                                          ifelse(id =="P477_GT",-X3Mo+2*(2.7404474),
+                                                                          ifelse(id =="P476_LU",-X3Mo+2*(2.7329617),
+                                                                          ifelse(id =="P357_KK",-X3Mo+2*(3.33),
+                                                                          ifelse(id =="P218_GC",-X3Mo+2*(3.021187),X3Mo)
+                                                                          ))))))))))))))
+
+##adjustig ystart
+gaitline.total <- gaitline.total  %>% rowwise() %>%  mutate(adj3Mo = ifelse(
+  id =="P038_BA",new3Mo -(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P053_KD",new3Mo-(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P068_DP",new3Mo-(gaitline.total %>% filter(id =="P068_DP"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P114_NU",new3Mo-(gaitline.total %>% filter(id =="P114_NU"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P129_VJ",new3Mo-(gaitline.total %>% filter(id =="P129_VJ"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P138_SG",new3Mo-(gaitline.total %>% filter(id =="P138_SG"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P149_KB",new3Mo-(gaitline.total %>% filter(id =="P149_KB"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P218_GC",new3Mo-(gaitline.total %>% filter(id =="P218_GC"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P220_LR",new3Mo-(gaitline.total %>% filter(id =="P220_LR"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P282_RF",new3Mo-(gaitline.total %>% filter(id =="P282_RF"&time ==1) %>% select(new3Mo) %>% unlist()),
+ifelse(id =="P353_ST",new3Mo-(gaitline.total %>% filter(id =="P353_ST"&time ==1) %>% select(new3Mo) %>% unlist()), ifelse(id =="P477_GT",new3Mo-(gaitline.total %>% filter(id =="P477_GT"&time ==1) %>% select(new3Mo) %>% unlist()), ifelse(id =="P476_LU",new3Mo-(gaitline.total %>% filter(id =="P476_LU"&time ==1) %>% select(new3Mo) %>% unlist()), ifelse(id =="P357_KK",-new3Mo+2*(gaitline.total %>% filter(id =="P357_KK"&time ==1) %>% select(new3Mo) %>% unlist()), 
+       new3Mo)))))))))))))))
+
+
+
+gaitline.total <- gaitline.total  %>% rowwise() %>%  mutate(newX6Mo = ifelse(
+  id =="P038_BA",-X6Mo+2*(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P053_KD",-X6Mo+2*(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P068_DP",-X6Mo+2*(gaitline.total %>% filter(id =="P068_DP"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P114_NU",-X6Mo+2*(gaitline.total %>% filter(id =="P114_NU"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P129_VJ",-X6Mo+2*(gaitline.total %>% filter(id =="P129_VJ"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P138_SG",-X6Mo+2*(gaitline.total %>% filter(id =="P138_SG"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P149_KB",-X6Mo+2*(gaitline.total %>% filter(id =="P149_KB"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P218_GC",-X6Mo+2*(gaitline.total %>% filter(id =="P218_GC"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P220_LR",-X6Mo+2*(gaitline.total %>% filter(id =="P220_LR"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P282_RF",-X6Mo+2*(gaitline.total %>% filter(id =="P282_RF"&time ==1) %>% select(X6Mo) %>% unlist()),
+ifelse(id =="P353_ST",-X6Mo+2*(gaitline.total %>% filter(id =="P353_ST"&time ==1) %>% select(X6Mo) %>% unlist()), ifelse(id =="P477_GT",-X6Mo+2*(gaitline.total %>% filter(id =="P477_GT"&time ==1) %>% select(X6Mo) %>% unlist()), ifelse(id =="P476_LU",-X6Mo+2*(gaitline.total %>% filter(id =="P476_LU"&time ==1) %>% select(X6Mo) %>% unlist()), ifelse(id =="P357_KK",-X6Mo+2*(gaitline.total %>% filter(id =="P357_KK"&time ==1) %>% select(X6Mo) %>% unlist()), 
+       X6Mo)))))))))))))))
+
+gaitline.total <- gaitline.total  %>% rowwise() %>%  mutate(new12Mo = ifelse(
+  id =="P038_BA",-X12Mo+2*(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P053_KD",-X12Mo+2*(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P068_DP",-X12Mo+2*(gaitline.total %>% filter(id =="P068_DP"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P114_NU",-X12Mo+2*(gaitline.total %>% filter(id =="P114_NU"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P129_VJ",-X12Mo+2*(gaitline.total %>% filter(id =="P129_VJ"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P138_SG",-X12Mo+2*(gaitline.total %>% filter(id =="P138_SG"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P149_KB",-X12Mo+2*(gaitline.total %>% filter(id =="P149_KB"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P218_GC",-X12Mo+2*(gaitline.total %>% filter(id =="P218_GC"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P220_LR",-X12Mo+2*(gaitline.total %>% filter(id =="P220_LR"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P282_RF",-X12Mo+2*(gaitline.total %>% filter(id =="P282_RF"&time ==1) %>% select(X12Mo) %>% unlist()),
+ifelse(id =="P353_ST",-X12Mo+2*(gaitline.total %>% filter(id =="P353_ST"&time ==1) %>% select(X12Mo) %>% unlist()), ifelse(id =="P477_GT",-X12Mo+2*(gaitline.total %>% filter(id =="P477_GT"&time ==1) %>% select(X12Mo) %>% unlist()), ifelse(id =="P476_LU",-X12Mo+2*(gaitline.total %>% filter(id =="P476_LU"&time ==1) %>% select(X12Mo) %>% unlist()), ifelse(id =="P357_KK",-X12Mo+2*(gaitline.total %>% filter(id =="P357_KK"&time ==1) %>% select(X12Mo) %>% unlist()), 
+       X12Mo)))))))))))))))
+
+gaitline.total <- gaitline.total  %>% rowwise() %>%  mutate(new24Mo = ifelse(
+  id =="P038_BA",-X24Mo+2*(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P053_KD",-X24Mo+2*(gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P068_DP",-X24Mo+2*(gaitline.total %>% filter(id =="P068_DP"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P114_NU",-X24Mo+2*(gaitline.total %>% filter(id =="P114_NU"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P129_VJ",-X24Mo+2*(gaitline.total %>% filter(id =="P129_VJ"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P138_SG",-X24Mo+2*(gaitline.total %>% filter(id =="P138_SG"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P149_KB",-X24Mo+2*(gaitline.total %>% filter(id =="P149_KB"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P218_GC",-X24Mo+2*(gaitline.total %>% filter(id =="P218_GC"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P220_LR",-X24Mo+2*(gaitline.total %>% filter(id =="P220_LR"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P282_RF",-X24Mo+2*(gaitline.total %>% filter(id =="P282_RF"&time ==1) %>% select(X24Mo) %>% unlist()),
+ifelse(id =="P353_ST",-X24Mo+2*(gaitline.total %>% filter(id =="P353_ST"&time ==1) %>% select(X24Mo) %>% unlist()), ifelse(id =="P477_GT",-X24Mo+2*(gaitline.total %>% filter(id =="P477_GT"&time ==1) %>% select(X24Mo) %>% unlist()), ifelse(id =="P476_LU",-X24Mo+2*(gaitline.total %>% filter(id =="P476_LU"&time ==1) %>% select(X24Mo) %>% unlist()), ifelse(id =="P357_KK",-X24Mo+2*(gaitline.total %>% filter(id =="P357_KK"&time ==1) %>% select(X24Mo) %>% unlist()), 
+       X24Mo)))))))))))))))
+#gaitline.total %>% filter(id =="P038_BA"&time ==0) %>% select(X6Mo)
+
+#gaitline.total %>% filter(Side == "R"&time == 10) %>% select(id, X6Mo, new6Mo)
+gaitline.right <- gaitline.total %>% filter(id == c("P038_BA", "P053_KD","P068_DP","P114_NU","P129_VJ","P138_SG","P149_KB","P218_GC"))
+```
+
+#arrange to y axis
+```{r}
+lapply()
+
+
+gaitline.total %>% filter(id =="P038_BA"&time ==1) %>% select(X6Mo) %>% unlist()
+
+
+new.function <- function(my_data, columN, idnt) {
+  my_data <- my_data %>% mutate(columN == columN - (my_data %>% filter(id ==idnt&time ==1) %>% select(columN) %>% unlist()))
+}
+
+gait.new2 <- new.function(my_data= gaitline.total, columN = "new6Mo", idnt = "P038_BA")
+gaitline.total %>%
+  group_by(id) %>%
+  group_modify(~ {new3Mo-new3Mo
+     
+  })
+
+#gaitline.total2 <- gaitline.total %>% filter(time == c(1:20) %>% unlist())
+```
+
+
+```{r}
+#Flies <- MakeFPCAInputs(medfly25$ID,medfly25$Days,medfly25$nEggs)
+Gaits <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$new3Mo) 
+Gaits3 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$new3Mo)
+Gaits6 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$newX6Mo)
+Gaits12 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$new12Mo)
+Gaits24 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$new24Mo)
+GaitsVelo <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$V3Mo)
+GaitsVelo6 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$V6Mo)
+GaitsVelo12 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$V12Mo)
+GaitsVelo24 <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$V24Mo)
+                            
+Gaits3adj <- MakeFPCAInputs(gaitline.total$id,  gaitline.total$time, gaitline.total$adj3Mo)
+#Play around with Params
+fpcaObjGait <- FPCA(Gaits$Ly,Gaits$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+
+#save.deriv <- fitted.FPCAder(fpcaObjGait, optns = list(p = 1))
+#FPCA Obj. 3M
+fpcaObjGait3 <- FPCA(Gaits3$Ly,Gaits3$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+
+fpcaObjGait3adj <- FPCA(Gaits3adj$Ly,Gaits3$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+#FPCA Obj. 6M
+fpcaObjGait6 <- FPCA(Gaits6$Ly,Gaits6$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+#FPCA Obj. 12M
+fpcaObjGait12 <- FPCA(Gaits12$Ly,Gaits6$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+#FPCA Obj. 24M
+fpcaObjGait24 <- FPCA(Gaits24$Ly,Gaits$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+fpcaObjVelo <- FPCA(GaitsVelo$Ly,GaitsVelo$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2, kernel='epan'))
+fpcaObjVelo6 <- FPCA(GaitsVelo6$Ly,GaitsVelo$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+fpcaObjVelo12 <- FPCA(GaitsVelo12$Ly,GaitsVelo$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+fpcaObjVelo24 <- FPCA(GaitsVelo24$Ly,GaitsVelo$Lt,
+                     list(plot=TRUE,
+                          methodMuCovEst='smooth',
+                          userBwCov=2))
+
+CreatePathPlot(fpcaObjGait3, main = 'Cluster 1 Velocity (6Mo)', showObs = FALSE, derOptns = list(p = 0, bw = 1.01 , kernelType = 'epan'))
+
+#fpcaObjVelo24$fittedCov
+```
+
+```{r}
+numK <- SelectK(fpcaObjGait3adj,criterion = "AIC")
+numK
+#fpca.scores(fpcaObjVelo24)
+
+#scoresPACE(GaitsVelo24$Ly,GaitsVelo$Lt)
+#export of clustered data
+clustering.data <- as.data.frame(fpcaObjVelo$xiEst)
+#
+##Hier ist geplant, die gesamten Daten V1:5 über externe Cluster Algorithmen auszwerten und nicht auf die standard auswertung zurückzugreicen um höherdimensionale Cluster erkennen zu können!! 
+
+# Set up 2 x 3 plotting grid
+par(mfrow = c(2, 3))
+
+# Set seed
+set.seed(1)
+
+for(i in 1:6) {
+  # Run kmeans() on x with three clusters and one start
+  km.out <- kmeans(clustering.data, centers = 3, nstart = 1)
+  
+  # Plot clusters
+  plot(clustering.data, col = km.out$cluster)
+  
+}
+
+#tryout for hirarchical clustering for group determination
+data.disimilarity.11 <- dist(clustering.data)
+hirar.11 <- hclust(data.disimilarity.11, method = "complete")
+
+plot(hirar.11, ylab="Distance", main=paste('Strong Separation Between',n.groups, 'Groups'))
+
+#Ideas: Try out doublML-Clustering
+#mlr 3 Clustering
+# library(mlr3)
+# library(mlr3cluster)
+# 
+# task = tsk("usarrests")
+# learner = lrn("clust.kmeans", centers = 3)
+# pred = learner$train(task)$predict(task)
+# 
+# autoplot(learner)
+
+install.packages("fpc")
+install.packages("dbscan")
+library(dbscan)
+library(fpc)
+library("factoextra")
+
+kNNdistplot(clustering.data, k = 4) 
+dbscan(data, eps, MinPts = 5, scale = FALSE, 
+       method = c("hybrid", "raw", "dist"))
+
+# Compute DBSCAN using fpc package
+##http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
+set.seed(123)
+db <- dbscan(clustering.data, eps = 0.6, MinPts = 4)
+# Plot DBSCAN results
+#plot(db, clustering.data, main = "DBSCAN", frame = FALSE)
+
+db$cluster
+
+
+
+fviz_cluster(db, clustering.data, stand = FALSE, frame = FALSE, geom = "point")
+```
+
+```{r}
+K <- numK$K
+```
+```{r}
+g<-CreatePathPlot(fpcaObjVelo)
+```
+```{r}
+gaitline.total[gaitline.total$id==unique(gaitline.total$id)[c(1:40)],] %>% 
+  ggplot(aes(x=time,y=V3Mo,color=as.factor(id))) +
+  geom_line()
+```
+
+```{r}
+par(mfrow=c(2,2))
+  CreatePathPlot(fpcaObjGait,subset=c(3,5))
+  CreatePathPlot(fpcaObjGait,subset=c(3,5),K=1,main="K=1",pch=4)
+```
+
+```{r}
+  CreatePathPlot(fpcaObjGait,K=3,main="K=3",pch=6)
+  CreatePathPlot(fpcaObjGait,K=2,main="K=4",pch=2)
+```
+
+```{r}
+par(mfrow=c(1,1))
+```
+
+```{r}
+CreateOutliersPlot(fpcaObjVelo,optns=list(K=1,variant='KDE'))
+```
+
+```{r}
+CreateFuncBoxPlot(fpcaObjVelo24,xlab="time",ylab="gait deviation",
+                  optns=list(K=3,variant="bagplot"))
+```
+#
+
+```{r}
+library(EMCluster)
+#data(medfly25) 
+#Flies <- MakeFPCAInputs(my_data$id, my_data$time, my_data$angle) 
+
+set.seed(1)
+newClust <- FClust(Gaits3adj$Ly, Gaits3$Lt, k = 2, cmethod = 'EMCluster', optnsFPCA = list(methodMuCovEst = 'smooth', userBwCov = 2, FVEthreshold = 0.84))
+
+veryLowCount = ifelse( sapply( unique(gaitline.total$id), function(u) 
+  sum(gaitline.total$angle[gaitline.total$id == u] )) < 25, 0, 1)
+
+N <- length(unique(gaitline.total$id))
+(correctRate <- sum((1 + veryLowCount) == newClust$cluster)/ N) # 99.6%
+
+unique(gaitline.total$id)
+ select_df <- as.data.frame(newClust$cluster,unique(gaitline.total$id))
+ select_df <-  select_df %>% mutate(id = rownames( select_df))
+  vector <- select_df %>% filter(newClust$cluster == 2)
+
+newClust$cluster
+
+```
+#show cluster Gaitline
+```{r}
+a <- unique(gaitline.total$id)
+b <- as.array(newClust$cluster)
+v <- as.data.frame(array(c(a,b), dim = c(40,2)))
+#v <- select_df
+v <- v %>% mutate("V3" = c(1:40))
+v1 <- v %>% filter(V2 == 1)
+v2 <- v %>% filter(V2 == 2)
+
+#GaitsVelo
+pdf("3Monts_Gaitline_cluster_adjusted_V50.pdf")
+par(mfrow=c(2,2))
+ CreatePathPlot(fpcaObjGait3adj,subset = unlist(v1$V3), main = 'Cluster 1 Gaitline (3Mo)', showObs = FALSE) ; grid()
+#CreatePathPlot(fpcaObjFlies,subset = c(2,3,7,20,39,41,42,49), K = 3, main = 'Cluster 1 (24Mo)', showObs = FALSE, derOptns = list(p = 1, bw = 1.01 , kernelType = 'epan') );
+ CreatePathPlot(fpcaObjGait3adj,subset = unlist(v1$V3), main = 'Cluster 1 Gaitline Derivative (3Mo)', showObs = FALSE,  derOptns = list(p = 1)) ; grid()
+  CreatePathPlot(fpcaObjGait3adj,subset = unlist(v2$V3), K = 2, main = 'Cluster 2 Gaitline (3Mo)', showObs = FALSE) ; grid()
+#CreatePathPlot(fpcaObjFlies,subset = c(2,3,7,20,39,41,42,49), K = 3, main = 'Cluster 1 (24Mo)', showObs = FALSE, derOptns = list(p = 1, bw = 1.01 , kernelType = 'epan') );
+  CreatePathPlot(fpcaObjGait3adj,subset = unlist(v2$V3), K = 3, main = 'Cluster 2 Gaitline Derivative (3Mo)', showObs = FALSE,  derOptns = list(p = 1)) ; grid()
+  #CreatePathPlot(fpcaObjFlies,subset = c(2,3,7,20,39,41,42,49), K = 3, main = 'Cluster 2 Ancle invers. Deriv.', showObs = FALSE, derOptns = list(p = 1, bw = 1.01 , kernelType = 'epan') )  ; 
+  
+  grid()
+dev.off  
+
+```
+
+#Cluster Velocity after 6 months
+```{r}
+library(EMCluster)
+#data(medfly25) 
+#Flies <- MakeFPCAInputs(my_data$id, my_data$time, my_data$angle) 
+
+set.seed(42)
+newClust <- FClust(GaitsVelo$Ly, GaitsVelo$Lt, k = 2, cmethod = 'EMCluster', optnsFPCA = list(methodMuCovEst = 'smooth', userBwCov = 2, FVEthreshold = 0.8))
+
+veryLowCount = ifelse( sapply( unique(gaitline.total$id), function(u) 
+  sum(gaitline.total$angle[gaitline.total$id == u] )) < 25, 0, 1)
+
+N <- length(unique(gaitline.total$id))
+(correctRate <- sum((1 + veryLowCount) == newClust$cluster)/ N) # 99.6%
+
+unique(gaitline.total$id)
+ select_df <- as.data.frame(newClust$cluster,unique(gaitline.total$id))
+ select_df <-  select_df %>% mutate(id = rownames( select_df))
+  vector <- select_df %>% filter(newClust$cluster == 2)
+
+newClust$cluster
+
+km.out$cluster
+```
+#show cluster
+```{r}
+a <- unique(gaitline.total$id)
+b <- as.array(db$cluster)
+v <- as.data.frame(array(c(a,b), dim = c(40,2)))
+#v <- select_df
+v <- v %>% mutate("V3" = c(1:40))
+v1 <- v %>% filter(V2 == 1)
+v2 <- v %>% filter(V2 ==2)
+
+#GaitsVelo
+pdf("3Monts_Velocity_cluster_dbscan_VELO6.pdf")
+par(mfrow=c(2,2))
+ CreatePathPlot(fpcaObjVelo,subset = unlist(v1$V3), main = 'Cluster 1 Velocity (3Mo)', showObs = FALSE) ; grid()
+#CreatePathPlot(fpcaObjFlies,subset = c(2,3,7,20,39,41,42,49), K = 3, main = 'Cluster 1 (24Mo)', showObs = FALSE, derOptns = list(p = 1, bw = 1.01 , kernelType = 'epan') );
+ CreatePathPlot(fpcaObjVelo,subset = unlist(v1$V3), main = 'Cluster 1 Velocity Derivative (3Mo)', showObs = FALSE,  derOptns = list(p = 1)) ; grid()
+  CreatePathPlot(fpcaObjVelo,subset = unlist(v2$V3), main = 'Cluster 2 Velocity (3Mo)', showObs = FALSE) ; grid()
+#CreatePathPlot(fpcaObjFlies,subset = c(2,3,7,20,39,41,42,49), K = 3, main = 'Cluster 1 (24Mo)', showObs = FALSE, derOptns = list(p = 1, bw = 1.01 , kernelType = 'epan') );
+  CreatePathPlot(fpcaObjVelo,subset = unlist(v2$V3), K = 3, main = 'Cluster 2 Velocity Derivative (3Mo)', showObs = FALSE,  derOptns = list(p = 1)) ; grid()
+  #CreatePathPlot(fpcaObjFlies,subset = c(2,3,7,20,39,41,42,49), K = 3, main = 'Cluster 2 Ancle invers. Deriv.', showObs = FALSE, derOptns = list(p = 1, bw = 1.01 , kernelType = 'epan') )  ; 
+  
+  grid()
+dev.off  
+
+```
+
+#GGPLOT der Gaitlines nach 3 Monaten 
+```{r}
+gaitline.total2 <- gaitline.total %>%
+  mutate(Group= ifelse((id %in% v1$V1), "Group 1", "Group 2"))
+
+
+Line_plot_3M <-  gaitline.total2 %>% ggplot(aes(y = new3Mo, x = time, group = id, color = Group))+
+  geom_line()+
+  ggtitle("Gaitline 3 Months postoperative")+
+  theme_pubr()+
+  ylab("medio-lateral CoP excursion [cm]")+
+  xlab("% of stance phase")+
+   scale_x_continuous(expand = c(0, 0), limits = c(0, 100)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(-1, 10))+
+  geom_hline(yintercept = 0, color="red", linetype="dashed", size=.5)+
+  #coord_cartesian(expand = FALSE)+
+  facet_wrap(.~Group)+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black", fill=NA, size=0.9),
+        #axis.text.x=element_text(angle=-45, hjust=0.5, vjust = 1,
+        panel.spacing = unit(2, "lines"),
+        plot.title = element_text(color="black", size=18, face="bold", hjust = 0.5),
+        axis.title.x = element_text(color="black", size=10, face="bold"),
+        axis.title.y = element_text(color="black", size=10, face="bold"),
+        panel.background = element_rect()
+        )
+                                                            
+                                                            
+
+Line_plot_3M 
+
+ggsave("plt222.pdf",height = 5 , width = 10)
+```
+#GGPLOT der Gaitlines nach 6 Monaten 
+```{r}
+Line_plot_6M <-  gaitline.total %>% ggplot(aes(y = newX6Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 6 Months")+
+  theme_bw()
+```
+#GGPLOT der Gaitlines nach 12 Monaten 
+```{r}
+Line_plot_12M <-  gaitline.total %>% ggplot(aes(y = new12Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 12 Months")+
+  theme_bw()
+```
+
+#GGPLOT der Gaitlines nach 24 Monaten 
+```{r}
+Line_plot_24M <-  gaitline.total %>% ggplot(aes(y = new24Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 24 Months")+
+  theme_bw()
+```
+#arrange lineplots for overview
+```{r}
+ggarrange(Line_plot_3M, Line_plot_6M, Line_plot_12M, Line_plot_24M, nrow = 2, ncol = 2, common.legend = TRUE, legend = "bottom")
+
+ggsave("gaitline_overview.pdf", width = 12, height = 9)
+```
+
+#GGPLOT der Gaitlines Velocity nach 3 Monaten 
+```{r}
+#install.packages("viridis")  # Install
+#library("viridis")  
+Line_plot_3Mv <-  gaitline.total %>% ggplot(aes(y = V3Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 3 Months")+
+  theme_bw()
+```
+#GGPLOT der Gaitlines nach 6 Monaten 
+```{r}
+Line_plot_6Mv <-  gaitline.total %>% ggplot(aes(y = V6Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 6 Months")+
+  theme_bw()
+```
+#GGPLOT der Gaitlines nach 12 Monaten 
+```{r}
+Line_plot_12Mv <-  gaitline.total %>% ggplot(aes(y = V12Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 12 Months")+
+  theme_bw()
+```
+
+#GGPLOT der Gaitlines nach 24 Monaten 
+```{r}
+Line_plot_24Mv <-  gaitline.total %>% ggplot(aes(y = V24Mo, x = time, group = id, color = id))+
+  geom_line()+
+  ggtitle("Gaitline after 24 Months")+
+  theme_bw()
+  #scale_color_brewer(palette = "Dark2")
+```
+#arrange lineplots for overview
+```{r}
+ggarrange(Line_plot_3Mv, Line_plot_6Mv, Line_plot_12Mv, Line_plot_24Mv, nrow = 2, ncol = 2, common.legend = TRUE, legend = "bottom")
+
+ggsave("gaitline_Velocity_overview.pdf", width = 12, height = 9)
+```
+
+#Compare AOFAS Values between determined Groups
+```{r}
+library(gtsummary)
+aofas_scores$id <- aofas_scores$X
+aofas_scores.2<- merge(aofas_scores, select_df, by = "id")
+aofas_scores.2 <- aofas_scores.2 %>% mutate(groupV = `newClust$cluster`)
+aofas_scores.2 <- aofas_scores.2 %>% mutate(groupV = ifelse(groupV==1,1,2))
+
+table.cluster.comp <-
+ aofas_scores.2 %>% 
+ # filter(sgaplbrand != "Andere Prothese / Eingriff"&sgaplbrand !="Promos Standard") %>% 
+  select("X3Mo", "X6Mo", "X12Mo", "X24Mo", "groupV") %>% 
+  tbl_summary(
+    by = "groupV", # split table by group
+    statistic = list(all_continuous() ~ "{mean} ({sd})")
+  ) %>%
+  #add_n() %>% # add column with total number of non-missing observations 
+  #add_p() %>% # add significance tests between groups (Significance testing on Table 1 is not meaningful, because of many tests not corrected for multiple testing and because this is not a random sample)
+add_difference() %>%
+  add_n() %>%
+  modify_header(all_stat_cols() ~ "**{level}**") %>%
+  modify_footnote(all_stat_cols() ~ NA) %>% print()
+```
+
+
+#P499_BR, P494_RA, P477_GT, P469_HJ
+```{r}
+df %>% 
+   pivot_longer(-id, names_to = "town")
+
+as.list(df$X3Mo)
+#Reshape df to what i need
+data.analyse <- reshape(df, direction = "wide", idvar = "time", timevar = "id")
+
+df =  data.analyse
+#df2 <- cast(df, Norm_Time ~ id, value = 'Sprunggelenk_Abduktion_LT')
+yList = as.list(as.matrix(df[,-1]))
+
+tList = as.list(df[,1])
+length(tList)
+FPCAobj <- FPCA(Ly=yList, Lt=tList)
+df <- gaitline.total %>% select(c("id","X3Mo", "time"))
+#dcast(df, time~X3Mo+id)
+#CheckData(df$X3Mo,df$time)
+gaitline.total
+Flies <- MakeFPCAInputs(gaitline.total$id, gaitline.total$X3Mo, gaitline.total$time) 
+fpcaObjFlies <- FPCA(Flies$Ly, Flies$Lt, list(plot = TRUE, methodMuCovEst = 'smooth', userBwCov = 2))
+help(CheckData)
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
